@@ -16,5 +16,20 @@ func main() {
 
 	tasksList.Add(task1, task2)
 
-	util.DumpJSON(tasksList)
+	jsonPrinter := func(task *todo.TaskItem) {
+		util.DumpJSON(task)
+	}
+	tasksList.Iterate(jsonPrinter)
+
+	// xmlPrinter := func(task *todo.TaskItem) {
+	// 	b, err := xml.MarshalIndent(task, "", "    ")
+	// 	if err == nil {
+	// 		fmt.Println(string(b))
+	// 	} else {
+	// 		fmt.Println("Failed to marshal data to JSON", err)
+	// 	}
+	// }
+	// tasksList.Iterate(xmlPrinter)
+
+	// util.DumpJSON(tasksList)
 }
