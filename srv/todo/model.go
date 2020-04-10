@@ -30,12 +30,12 @@ func NewTaskItem(heading, description string, deadline time.Time) *TaskItem {
 // TaskList -
 type TaskList struct {
 	Tasks  []*TaskItem `json:"tasks"`
-	lastID int
+	NextID int         `json:"nextID"`
 }
 
 func (tl *TaskList) nextID() int {
-	id := tl.lastID
-	tl.lastID++
+	id := tl.NextID
+	tl.NextID++
 	return id
 }
 

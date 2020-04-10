@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/varunamachi/tasklist/srv/todo"
@@ -8,28 +11,40 @@ import (
 )
 
 func main() {
-	tasksList := todo.NewTaskList()
-	task1 := todo.NewTaskItem("task1", "blah blah",
-		time.Now().Add(24*time.Hour))
-	task2 := todo.NewTaskItem("task2", "blah blah blah",
-		time.Now().Add(24*time.Hour))
-
-	tasksList.Add(task1, task2)
-
-	jsonPrinter := func(task *todo.TaskItem) {
-		util.DumpJSON(task)
+	cmd := ""
+	if len(os.Args) >= 2 {
+		cmd = os.Args[1]
+	} else {
+		fmt.Println("Valid commands are: ")
+		fmt.Println("\t 'add' - Add a task")
+		fmt.Println("\t 'list' - List tasks in the tasks list")
+		os.Exit(-1)
 	}
-	tasksList.Iterate(jsonPrinter)
 
-	// xmlPrinter := func(task *todo.TaskItem) {
-	// 	b, err := xml.MarshalIndent(task, "", "    ")
-	// 	if err == nil {
-	// 		fmt.Println(string(b))
-	// 	} else {
-	// 		fmt.Println("Failed to marshal data to JSON", err)
-	// 	}
-	// }
-	// tasksList.Iterate(xmlPrinter)
+	tasklist, err := todo.Load()
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatalf("Failed to load tasklist %s", err.Error())
+	}
+	switch cmd {
+	case "add":
+		addTaskAction(tasklist, os.Args[2:])
+	case "list":
+		listTaskAction(tasklist, os.Args[2:])
+	default:
+		log.Fatalf("Invalid command %s", cmd)
+	}
 
-	// util.DumpJSON(tasksList)
+}
+
+func addTaskAction(tl *todo.TaskList, args []string) {
+	if len(args) < 2 {
+		log.Fatalf("'add': Invalid number of arguments provided")
+	}
+	item := todo.NewTaskItem(args[0], args[1], time.Now().Add(24*time.Hour))
+	tl.Add(item)
+	todo.Store(tl)
+}
+
+func listTaskAction(tl *todo.TaskList, args []string) {
+	util.DumpJSON(tl)
 }
