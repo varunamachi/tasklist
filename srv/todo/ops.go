@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 )
 
 // Store -
@@ -14,7 +15,7 @@ func Store(taskList *TaskList) error {
 		return err
 	}
 
-	taskFile, err := os.Create("/home/varun/task_list.json")
+	taskFile, err := os.Create(getStorageDir() + "/task_list.json")
 	if err != nil {
 		return err
 	}
@@ -31,7 +32,7 @@ func Load() (*TaskList, error) {
 	//var taskList TaskList
 	taskList := NewTaskList()
 
-	taskFile, err := os.Open("/home/varun/task_list.json")
+	taskFile, err := os.Open(getStorageDir() + "/task_list.json")
 	if err != nil {
 		return taskList, err
 	}
@@ -44,4 +45,13 @@ func Load() (*TaskList, error) {
 
 	err = json.Unmarshal(data, taskList)
 	return taskList, err
+}
+
+func getStorageDir() string {
+	user, err := user.Current()
+	if err != nil {
+		dir, _ := os.Getwd()
+		return dir
+	}
+	return user.HomeDir
 }
