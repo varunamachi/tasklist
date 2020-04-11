@@ -6,8 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/varunamachi/tasklist/srv/db"
 	"github.com/varunamachi/tasklist/srv/todo"
 	"github.com/varunamachi/tasklist/srv/util"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -30,6 +33,8 @@ func main() {
 		addTaskAction(tasklist, os.Args[2:])
 	case "list":
 		listTaskAction(tasklist, os.Args[2:])
+	case "ping-db":
+		pingDbAction()
 	default:
 		log.Fatalf("Invalid command %s", cmd)
 	}
@@ -47,4 +52,32 @@ func addTaskAction(tl *todo.TaskList, args []string) {
 
 func listTaskAction(tl *todo.TaskList, args []string) {
 	util.DumpJSON(tl)
+}
+
+func pingDbAction() {
+	const host = "192.168.0.111"
+	const user = "raspi"
+	prompt := fmt.Sprintf("Password for %s@%s", user, host)
+	passwd, err := util.AskSecret(prompt)
+	if err != nil {
+		log.Fatalf("Failed to read password from terminal: %s", err.Error())
+	}
+
+	err = db.Connect(&db.ConnOpts{
+		Host:     host,
+		Port:     5432,
+		User:     user,
+		Password: passwd,
+		Database: "tasklist",
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %s", err.Error())
+	}
+
+	err = db.Conn().Ping()
+	if err != nil {
+		log.Fatalf("Failed to ping the database: %s", err.Error())
+	}
+
+	log.Println("Database Connection Works!!")
 }
