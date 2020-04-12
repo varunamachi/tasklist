@@ -72,3 +72,33 @@ func NewTaskList() *TaskList {
 		Tasks: make([]*TaskItem, 0, 100),
 	}
 }
+
+// DbOp - opcode for bulk operations
+type DbOp string
+
+// Update -
+var Update DbOp = "update"
+
+// Delete -
+var Delete DbOp = "delete"
+
+// Create -
+var Create DbOp = "create"
+
+// BulkOp - represents batch operation on data storage
+type BulkOp struct {
+	Op    DbOp
+	Items []*TaskItem
+}
+
+// Storage - represents a storage backend for the task list
+type Storage interface {
+	Name() string
+	Init() error
+	Add(item *TaskItem) error
+	Remove(id int) error
+	Update(item *TaskItem) error
+	Retrieve(id int) error
+	Bulk(op BulkOp) error
+	RetrieveAll() []*TaskItem
+}

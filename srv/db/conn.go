@@ -1,4 +1,4 @@
-package db 
+package db
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ var db *sqlx.DB
 
 // ConnOpts - options for connecting to a postgres instance
 type ConnOpts struct {
-	Host string
-	Port int
-	User string
+	Host     string
+	Port     int
+	User     string
 	Password string
 	Database string
 }
@@ -20,7 +20,7 @@ type ConnOpts struct {
 // String - converts ConnOpts to appropriate connection string
 func (co *ConnOpts) String() string {
 	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		co.Host,
 		co.Port,
 		co.User,
@@ -35,7 +35,7 @@ func Connect(opts *ConnOpts) error {
 	return err
 }
 
-// Conn - gives a connection to database if it is initialized, otherwise returns 
+// Conn - gives a connection to database if it is initialized, otherwise returns
 // nil
 func Conn() *sqlx.DB {
 	return db

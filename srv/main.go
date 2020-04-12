@@ -14,6 +14,15 @@ import (
 )
 
 func main() {
+	connect()
+
+	var storage todo.Storage
+	storage = &db.PostgresStorage{}
+	err := storage.Init()
+	if err != nil {
+		log.Fatalf("Failed to initialize data source")
+	}
+
 	cmd := ""
 	if len(os.Args) >= 2 {
 		cmd = os.Args[1]
@@ -55,29 +64,31 @@ func listTaskAction(tl *todo.TaskList, args []string) {
 }
 
 func pingDbAction() {
-	const host = "192.168.0.111"
-	const user = "raspi"
-	prompt := fmt.Sprintf("Password for %s@%s", user, host)
-	passwd, err := util.AskSecret(prompt)
-	if err != nil {
-		log.Fatalf("Failed to read password from terminal: %s", err.Error())
-	}
-
-	err = db.Connect(&db.ConnOpts{
-		Host:     host,
-		Port:     5432,
-		User:     user,
-		Password: passwd,
-		Database: "tasklist",
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %s", err.Error())
-	}
-
-	err = db.Conn().Ping()
+	err := db.Conn().Ping()
 	if err != nil {
 		log.Fatalf("Failed to ping the database: %s", err.Error())
 	}
 
 	log.Println("Database Connection Works!!")
+}
+
+func connect() error {
+
+	// prompt := fmt.Sprintf("Password for %s@%s", user, host)
+	// passwd, err := util.AskSecret(prompt)
+	// if err != nil {
+	// 	log.Fatalf("Failed to read password from terminal: %s", err.Error())
+	// }
+
+	err := db.Connect(&db.ConnOpts{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "postgres",
+		Database: "tasklist",
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %s", err.Error())
+	}
+	return err
 }
