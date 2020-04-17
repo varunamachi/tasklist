@@ -16,8 +16,7 @@ import (
 func main() {
 	connect()
 
-	var storage todo.Storage
-	storage = &db.PostgresStorage{}
+	storage := &db.PostgresStorage{}
 	err := storage.Init()
 	if err != nil {
 		log.Fatalf("Failed to initialize data source")
@@ -33,15 +32,14 @@ func main() {
 		os.Exit(-1)
 	}
 
-	tasklist, err := todo.Load()
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatalf("Failed to load tasklist %s", err.Error())
 	}
 	switch cmd {
 	case "add":
-		addTaskAction(tasklist, os.Args[2:])
+		addTaskAction(storage, os.Args[2:])
 	case "list":
-		listTaskAction(tasklist, os.Args[2:])
+		listTaskAction(storage, os.Args[2:])
 	case "ping-db":
 		pingDbAction()
 	default:
@@ -50,17 +48,24 @@ func main() {
 
 }
 
-func addTaskAction(tl *todo.TaskList, args []string) {
+func addTaskAction(st todo.Storage, args []string) {
 	if len(args) < 2 {
 		log.Fatalf("'add': Invalid number of arguments provided")
 	}
 	item := todo.NewTaskItem(args[0], args[1], time.Now().Add(24*time.Hour))
-	tl.Add(item)
-	todo.Store(tl)
+	err := st.Add(item)
+	if err != nil {
+		log.Fatalf("Failed to add %s", err.Error())
+	}
+	log.Print("Added...")
 }
 
-func listTaskAction(tl *todo.TaskList, args []string) {
-	util.DumpJSON(tl)
+func listTaskAction(st todo.Storage, args []string) {
+	items, err := st.RetrieveAll(0, 10)
+	if err != nil {
+		log.Fatalf("Failed to retrieve todo items: %s", err.Error())
+	}
+	util.DumpJSON(items)
 }
 
 func pingDbAction() {

@@ -98,7 +98,7 @@ type Storage interface {
 	Add(item *TaskItem) error
 	Remove(id int) error
 	Update(item *TaskItem) error
-	Retrieve(id int) error
+	Retrieve(id int) (*TaskItem, error)
 	Bulk(op BulkOp) error
-	RetrieveAll() []*TaskItem
+	RetrieveAll(offset, limit int) ([]*TaskItem, error)
 }
