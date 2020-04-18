@@ -1,6 +1,41 @@
 package db
 
-import "github.com/varunamachi/tasklist/srv/todo"
+import (
+	"context"
+	"database/sql"
+	"time"
+
+	"github.com/varunamachi/tasklist/srv/todo"
+)
+
+var updateQuery = `
+	UPDATE tasks SET 
+	heading = :heading, 
+	description = :description, 
+	status = :status, 
+	created = :created, 
+	deadline = :deadline, 
+	modified = :modified, 
+	WHERE id = :id
+`
+
+var createQuery = `INSERT INTO tasks(
+			heading,
+			description,
+			status,
+			created,
+			deadline,
+			modified
+		) VALUES(
+			:heading,
+			:description,
+			:status,
+			:created,
+			:deadline,
+			:modified
+	);`
+
+var deleteQuery = `DELETE FROM tasks WHERE id = $1`
 
 // PostgresStorage -
 type PostgresStorage struct {
@@ -28,29 +63,13 @@ func (pg *PostgresStorage) Init() error {
 
 // Add -
 func (pg *PostgresStorage) Add(ti *todo.TaskItem) error {
-	query := `INSERT INTO tasks(
-		heading,
-		description,
-		status,
-		created,
-		deadline,
-		modified
-	) VALUES(
-		:heading,
-		:description,
-		:status,
-		:created,
-		:deadline,
-		:modified
-	);`
-	_, err := db.NamedExec(query, ti)
+	_, err := db.NamedExec(createQuery, ti)
 	return err
 }
 
 // Remove -
 func (pg *PostgresStorage) Remove(id int) error {
-	query := `DELETE FROM tasks WHERE id = $1`
-	_, err := db.Exec(query, id)
+	_, err := db.Exec(deleteQuery, id)
 	return err
 }
 
@@ -61,16 +80,7 @@ func (pg *PostgresStorage) Name() string {
 
 // Update -
 func (pg *PostgresStorage) Update(item *todo.TaskItem) error {
-	query := `UPDATE tasks SET 
-		heading = :heading, 
-		description = :description, 
-		status = :status, 
-		created = :created, 
-		deadline = :deadline, 
-		modified = :modified, 
-		WHERE id = :id
-	`
-	_, err := db.Exec(query, item)
+	_, err := db.Exec(updateQuery, item)
 	return err
 }
 
@@ -83,8 +93,32 @@ func (pg *PostgresStorage) Retrieve(id int) (*todo.TaskItem, error) {
 }
 
 // Bulk -
-func (pg *PostgresStorage) Bulk(op todo.BulkOp) error {
-	return nil
+func (pg *PostgresStorage) Bulk(op todo.BulkOp) (err error) {
+	query := ""
+	switch op.Op {
+	case todo.Update:
+		query = updateQuery
+	case todo.Create:
+		query = createQuery
+	case todo.Delete:
+		query = deleteQuery
+	}
+	ctx, done := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer done()
+
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err = tx.Commit()
+	}()
+
+	for _, ti := range op.Items {
+		tx.Exec(query, ti)
+	}
+	return err
 }
 
 // RetrieveAll -

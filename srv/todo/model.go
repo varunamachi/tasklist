@@ -7,7 +7,7 @@ import (
 // TaskItem - represents a todo item
 type TaskItem struct {
 	ID          int       `json:"id" db:"id"`
-	Heading     string    `json:"heading" db:"heading"`
+	Heading     string    `json:"heading, required" db:"heading"`
 	Description string    `json:"description" db:"description"`
 	Status      string    `json:"status" db:"status"`
 	Created     time.Time `json:"created" db:"created"`
@@ -24,52 +24,6 @@ func NewTaskItem(heading, description string, deadline time.Time) *TaskItem {
 		Created:     time.Now(),
 		Modified:    time.Now(),
 		Deadline:    deadline,
-	}
-}
-
-// TaskList -
-type TaskList struct {
-	Tasks  []*TaskItem `json:"tasks"`
-	NextID int         `json:"nextID"`
-}
-
-func (tl *TaskList) nextID() int {
-	id := tl.NextID
-	tl.NextID++
-	return id
-}
-
-// Add -
-func (tl *TaskList) Add(items ...*TaskItem) {
-	for _, task := range items {
-		task.ID = tl.nextID()
-		tl.Tasks = append(tl.Tasks, task)
-	}
-}
-
-// Remove -
-func (tl *TaskList) Remove(id int) {
-	index := -1
-	for i, task := range tl.Tasks {
-		if task.ID == id {
-			index = i
-			break
-		}
-	}
-	tl.Tasks = append(tl.Tasks[:index], tl.Tasks[index+1:]...)
-}
-
-// Iterate -
-func (tl *TaskList) Iterate(operation func(*TaskItem)) {
-	for _, task := range tl.Tasks {
-		operation(task)
-	}
-}
-
-// NewTaskList -
-func NewTaskList() *TaskList {
-	return &TaskList{
-		Tasks: make([]*TaskItem, 0, 100),
 	}
 }
 
@@ -101,4 +55,16 @@ type Storage interface {
 	Retrieve(id int) (*TaskItem, error)
 	Bulk(op BulkOp) error
 	RetrieveAll(offset, limit int) ([]*TaskItem, error)
+}
+
+var storage Storage
+
+func SetStorage(st Storage) {
+	if storage == nil {
+		storage = st
+	}
+}
+
+func GetStorage() Storage {
+	return storage
 }

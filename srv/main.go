@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/varunamachi/tasklist/srv/api"
 	"github.com/varunamachi/tasklist/srv/db"
 	"github.com/varunamachi/tasklist/srv/todo"
 	"github.com/varunamachi/tasklist/srv/util"
@@ -16,12 +17,16 @@ import (
 func main() {
 	connect()
 
+	// Initialize storage and assign it to global variable todo.storage using
+	// todo.SetStorage()
 	storage := &db.PostgresStorage{}
 	err := storage.Init()
 	if err != nil {
 		log.Fatalf("Failed to initialize data source")
 	}
+	todo.SetStorage(storage)
 
+	// Handle commands and arguments
 	cmd := ""
 	if len(os.Args) >= 2 {
 		cmd = os.Args[1]
@@ -37,9 +42,11 @@ func main() {
 	}
 	switch cmd {
 	case "add":
-		addTaskAction(storage, os.Args[2:])
+		addTaskAction(os.Args[2:])
 	case "list":
-		listTaskAction(storage, os.Args[2:])
+		listTaskAction(os.Args[2:])
+	case "serve":
+		api.Run()
 	case "ping-db":
 		pingDbAction()
 	default:
@@ -48,20 +55,20 @@ func main() {
 
 }
 
-func addTaskAction(st todo.Storage, args []string) {
+func addTaskAction(args []string) {
 	if len(args) < 2 {
 		log.Fatalf("'add': Invalid number of arguments provided")
 	}
 	item := todo.NewTaskItem(args[0], args[1], time.Now().Add(24*time.Hour))
-	err := st.Add(item)
+	err := todo.GetStorage().Add(item)
 	if err != nil {
 		log.Fatalf("Failed to add %s", err.Error())
 	}
 	log.Print("Added...")
 }
 
-func listTaskAction(st todo.Storage, args []string) {
-	items, err := st.RetrieveAll(0, 10)
+func listTaskAction(args []string) {
+	items, err := todo.GetStorage().RetrieveAll(0, 10)
 	if err != nil {
 		log.Fatalf("Failed to retrieve todo items: %s", err.Error())
 	}
