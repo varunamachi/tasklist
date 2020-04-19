@@ -76,7 +76,7 @@ func (js *JSONStorage) Init() error {
 	}
 
 	js.list = make([]*TaskItem, 0, 100)
-	err = json.Unmarshal(byt, js.list)
+	err = json.Unmarshal(byt, &js.list)
 	if err != nil {
 		return err
 	}
