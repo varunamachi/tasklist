@@ -10,7 +10,7 @@ import (
 	"github.com/varunamachi/tasklist/srv/todo"
 )
 
-func Run() {
+func Run(port int) error {
 	e := echo.New()
 
 	listTasksHandler := func(ctx echo.Context) error {
@@ -48,7 +48,8 @@ func Run() {
 	}
 	e.POST("/api/task", createTaskHandler)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	address := fmt.Sprintf(":%d", port)
+	return e.Start(address)
 }
 
 func getInt(ctx echo.Context, key string) int {

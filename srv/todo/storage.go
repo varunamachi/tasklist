@@ -1,5 +1,12 @@
 package todo
 
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/user"
+)
+
 // TaskList -
 type TaskList struct {
 	Tasks  []*TaskItem `json:"tasks"`
@@ -48,16 +55,29 @@ func NewTaskList() *TaskList {
 
 // JSONStorage -
 type JSONStorage struct {
+	file *os.File
+	list []*TaskItem
 }
 
 // Init -
 func (pg *JSONStorage) Init() error {
+	var err error
+	pg.file, err = os.Create(getStorageDir() + "/task_list.json")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // Add -
 func (pg *JSONStorage) Add(ti *TaskItem) error {
-	return nil
+	pg.list = append(pg.list, ti)
+	raw, err := json.MarshalIndent(pg.list, "", "    ")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprint(pg.file, string(raw))
+	return err
 }
 
 // Remove -
@@ -88,4 +108,13 @@ func (pg *JSONStorage) Bulk(op BulkOp) error {
 // RetrieveAll -
 func (pg *JSONStorage) RetrieveAll() []*TaskItem {
 	return nil
+}
+
+func getStorageDir() string {
+	user, err := user.Current()
+	if err != nil {
+		dir, _ := os.Getwd()
+		return dir
+	}
+	return user.HomeDir
 }

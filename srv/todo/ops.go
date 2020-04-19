@@ -1,49 +1,27 @@
 package todo
 
-// Store -
-// func Store(taskList *TaskList) error {
-// 	raw, err := json.MarshalIndent(taskList, "", "    ")
-// 	if err != nil {
-// 		return err
-// 	}
+import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+)
 
-// 	taskFile, err := os.Create(getStorageDir() + "/task_list.json")
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer func() {
-// 		taskFile.Close()
-// 	}()
+// Load -
+func Load() (*TaskList, error) {
+	//var taskList TaskList
+	taskList := NewTaskList()
 
-// 	fmt.Fprint(taskFile, string(raw))
-// 	return nil
-// }
+	taskFile, err := os.Open(getStorageDir() + "/task_list.json")
+	if err != nil {
+		return taskList, err
+	}
+	defer taskFile.Close()
 
-// // Load -
-// func Load() (*TaskList, error) {
-// 	//var taskList TaskList
-// 	taskList := NewTaskList()
+	data, err := ioutil.ReadAll(taskFile)
+	if err != nil {
+		return taskList, err
+	}
 
-// 	taskFile, err := os.Open(getStorageDir() + "/task_list.json")
-// 	if err != nil {
-// 		return taskList, err
-// 	}
-// 	defer taskFile.Close()
-
-// 	data, err := ioutil.ReadAll(taskFile)
-// 	if err != nil {
-// 		return taskList, err
-// 	}
-
-// 	err = json.Unmarshal(data, taskList)
-// 	return taskList, err
-// }
-
-// func getStorageDir() string {
-// 	user, err := user.Current()
-// 	if err != nil {
-// 		dir, _ := os.Getwd()
-// 		return dir
-// 	}
-// 	return user.HomeDir
-// }
+	err = json.Unmarshal(data, taskList)
+	return taskList, err
+}

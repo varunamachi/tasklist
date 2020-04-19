@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -25,6 +26,11 @@ func NewTaskItem(heading, description string, deadline time.Time) *TaskItem {
 		Modified:    time.Now(),
 		Deadline:    deadline,
 	}
+}
+
+func (ti *TaskItem) String() string {
+	return fmt.Sprintf("%d. [%v]  %s ==>  %s",
+		ti.ID, ti.Deadline, ti.Heading, ti.Description)
 }
 
 // DbOp - opcode for bulk operations

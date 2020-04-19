@@ -6,101 +6,109 @@ import (
 	"os"
 	"time"
 
+	"github.com/urfave/cli"
 	"github.com/varunamachi/tasklist/srv/api"
 	"github.com/varunamachi/tasklist/srv/db"
 	"github.com/varunamachi/tasklist/srv/todo"
-	"github.com/varunamachi/tasklist/srv/util"
 
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	connect()
-
-	// Initialize storage and assign it to global variable todo.storage using
-	// todo.SetStorage()
-	storage := &db.PostgresStorage{}
-	err := storage.Init()
+	app := createCliApp()
+	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatalf("Failed to initialize data source")
+		log.Fatalf("App failed! - %s", err.Error())
 	}
-	todo.SetStorage(storage)
-
-	// Handle commands and arguments
-	cmd := ""
-	if len(os.Args) >= 2 {
-		cmd = os.Args[1]
-	} else {
-		fmt.Println("Valid commands are: ")
-		fmt.Println("\t 'add' - Add a task")
-		fmt.Println("\t 'list' - List tasks in the tasks list")
-		os.Exit(-1)
-	}
-
-	if err != nil && !os.IsNotExist(err) {
-		log.Fatalf("Failed to load tasklist %s", err.Error())
-	}
-	switch cmd {
-	case "add":
-		addTaskAction(os.Args[2:])
-	case "list":
-		listTaskAction(os.Args[2:])
-	case "serve":
-		api.Run()
-	case "ping-db":
-		pingDbAction()
-	default:
-		log.Fatalf("Invalid command %s", cmd)
-	}
-
 }
 
-func addTaskAction(args []string) {
-	if len(args) < 2 {
-		log.Fatalf("'add': Invalid number of arguments provided")
+func createCliApp() *cli.App {
+	return &cli.App{
+		Name: "tasklist",
+		Before: func(ctx *cli.Context) error {
+			err := db.Connect(&db.ConnOpts{
+				Host:     "localhost",
+				Port:     5432,
+				User:     "postgres",
+				Password: "postgres",
+				Database: "tasklist",
+			})
+			if err != nil {
+				log.Fatalf("Failed to connect to database: %s", err.Error())
+			}
+
+			storage := &db.PostgresStorage{}
+			err = storage.Init()
+			if err != nil {
+				log.Fatalf("Failed to initialize data source")
+			}
+			todo.SetStorage(storage)
+
+			return err
+		},
+		Commands: []cli.Command{
+			cli.Command{
+				Name:  "add",
+				Usage: "Add a new task",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "heading",
+						Required: true,
+						Usage:    "Heading of the task",
+					},
+					cli.StringFlag{
+						Name:     "desc",
+						Required: true,
+						Usage:    "Description of the task",
+					},
+					cli.UintFlag{
+						Name:     "deadline",
+						Required: true,
+						Usage:    "Deadline in number of days",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					heading := ctx.String("heading")
+					desc := ctx.String("desc")
+					deadline := ctx.Int("deadline")
+					numHrs := 24 * time.Hour * time.Duration(deadline)
+					err := todo.GetStorage().Add(todo.NewTaskItem(
+						heading, desc, time.Now().Add(numHrs)))
+					if err == nil {
+						fmt.Println("Added...")
+					}
+					return err
+				},
+			},
+			cli.Command{
+				Name:  "list",
+				Usage: "List task items",
+				Action: func(ctx *cli.Context) error {
+					tl, err := todo.GetStorage().RetrieveAll(0, 10)
+					if err != nil {
+						return err
+					}
+					for _, ti := range tl {
+						fmt.Println(ti)
+					}
+					return nil
+				},
+			},
+			cli.Command{
+				Name:  "serve",
+				Usage: "Start the API server",
+				Flags: []cli.Flag{
+					cli.IntFlag{
+						Name:  "port",
+						Usage: "Port for the server to run",
+						Value: 8080,
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					port := ctx.Int("port")
+					return api.Run(port)
+				},
+			},
+		},
 	}
-	item := todo.NewTaskItem(args[0], args[1], time.Now().Add(24*time.Hour))
-	err := todo.GetStorage().Add(item)
-	if err != nil {
-		log.Fatalf("Failed to add %s", err.Error())
-	}
-	log.Print("Added...")
-}
-
-func listTaskAction(args []string) {
-	items, err := todo.GetStorage().RetrieveAll(0, 10)
-	if err != nil {
-		log.Fatalf("Failed to retrieve todo items: %s", err.Error())
-	}
-	util.DumpJSON(items)
-}
-
-func pingDbAction() {
-	err := db.Conn().Ping()
-	if err != nil {
-		log.Fatalf("Failed to ping the database: %s", err.Error())
-	}
-
-	log.Println("Database Connection Works!!")
-}
-
-func connect() error {
-
-	// prompt := fmt.Sprintf("Password for %s@%s", user, host)
-	// passwd, err := util.AskSecret(prompt)
-	// if err != nil {
-	// 	log.Fatalf("Failed to read password from terminal: %s", err.Error())
-	// }
-
-	err := db.Connect(&db.ConnOpts{
-		Host:     "localhost",
-		Port:     5432,
-		User:     "postgres",
-		Password: "postgres",
-		Database: "tasklist",
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %s", err.Error())
-	}
-	return err
 }
