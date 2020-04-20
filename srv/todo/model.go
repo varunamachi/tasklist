@@ -65,12 +65,14 @@ type Storage interface {
 
 var storage Storage
 
+// SetStorage - setter
 func SetStorage(st Storage) {
 	if storage == nil {
 		storage = st
 	}
 }
 
+// GetStorage - getter
 func GetStorage() Storage {
 	return storage
 }

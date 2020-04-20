@@ -37,10 +37,11 @@ func createCliApp() *cli.App {
 				log.Fatalf("Failed to connect to database: %s", err.Error())
 			}
 
-			storage := &db.PostgresStorage{}
+			// storage := &db.PostgresStorage{}
+			storage := &todo.JSONStorage{}
 			err = storage.Init()
 			if err != nil {
-				log.Fatalf("Failed to initialize data source")
+				log.Fatalf("Failed to initialize data source %s", err.Error())
 			}
 			todo.SetStorage(storage)
 
