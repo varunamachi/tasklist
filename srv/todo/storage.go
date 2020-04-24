@@ -158,7 +158,6 @@ func (js *JSONStorage) Update(item *TaskItem) error {
 		}
 	}
 	if listItem != nil {
-		listItem.Created = item.Created
 		listItem.Deadline = item.Deadline
 		listItem.Description = item.Description
 		listItem.Heading = item.Heading

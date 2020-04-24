@@ -126,6 +126,57 @@ func createCliApp() *cli.App {
 				},
 			},
 			cli.Command{
+				Name:  "update",
+				Usage: "Update a new task",
+				Flags: []cli.Flag{
+					cli.UintFlag{
+						Name:     "id",
+						Required: true,
+						Usage:    "ID of the Task item",
+					},
+					cli.StringFlag{
+						Name:     "heading",
+						Required: true,
+						Usage:    "Heading of the task",
+					},
+					cli.StringFlag{
+						Name:     "desc",
+						Required: true,
+						Usage:    "Description of the task",
+					},
+					cli.StringFlag{
+						Name:     "status",
+						Required: true,
+						Usage:    "Status of the task",
+					},
+					cli.UintFlag{
+						Name:     "deadline",
+						Required: true,
+						Usage:    "Deadline in number of days",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					id := ctx.Int("id")
+					heading := ctx.String("heading")
+					desc := ctx.String("desc")
+					deadline := ctx.Int("deadline")
+					status := ctx.String("status")
+					numHrs := 24 * time.Hour * time.Duration(deadline)
+					updatedItem := &todo.TaskItem{
+						ID:          id,
+						Heading:     heading,
+						Description: desc,
+						Status:      status,
+						Deadline:    time.Now().Add(numHrs),
+					}
+					err := todo.GetStorage().Update(updatedItem)
+					if err == nil {
+						fmt.Println("Updated...")
+					}
+					return err
+				},
+			},
+			cli.Command{
 				Name:  "list",
 				Usage: "List task items",
 				Action: func(ctx *cli.Context) error {
