@@ -91,25 +91,39 @@ func (js *JSONStorage) Init() error {
 	if len(byt) != 0 {
 		err = json.Unmarshal(byt, &js.list)
 	}
-	js.file.Truncate(0)
-	js.file.Seek(0, 0)
 
 	return err
 }
 
 // Add -
 func (js *JSONStorage) Add(item *TaskItem) error {
+	if item == nil {
+		return fmt.Errorf("TaskItem is empty")
+	}
+	// Calcuate tasklist id
+	max := 0
+	for i := 0; i < len(js.list); i++ {
+		if js.list[i].ID > max {
+			max = js.list[i].ID
+		}
+	}
+	max++
+	item.ID = max
+
 	js.list = append(js.list, item)
 	raw, err := json.MarshalIndent(js.list, "", "    ")
 	if err != nil {
 		return err
 	}
+	js.file.Truncate(0)
+	js.file.Seek(0, 0)
+
 	_, err = fmt.Fprint(js.file, string(raw))
 	if err != nil {
 		return err
 	}
-	err = js.file.Close()
-	// js.file.Sync()
+	// err = js.file.Close()
+	js.file.Sync()
 	return err
 }
 
@@ -127,6 +141,8 @@ func (js *JSONStorage) Remove(id int) error {
 	if err != nil {
 		return err
 	}
+	js.file.Truncate(0)
+	js.file.Seek(0, 0)
 	_, err = fmt.Fprint(js.file, string(raw))
 	js.file.Sync()
 	return nil
@@ -153,6 +169,8 @@ func (js *JSONStorage) Update(item *TaskItem) error {
 		if err != nil {
 			return err
 		}
+		js.file.Truncate(0)
+		js.file.Seek(0, 0)
 		_, err = fmt.Fprint(js.file, string(raw))
 		js.file.Sync()
 		return nil
@@ -193,6 +211,14 @@ func (js *JSONStorage) RetrieveAll(offset, limit int) ([]*TaskItem, error) {
 		limit = offset + limit - len(js.list)
 	}
 	return js.list[offset:limit], nil
+}
+
+// Close -
+func (js *JSONStorage) Close() error {
+	if js.file != nil {
+		return js.file.Close()
+	}
+	return nil
 }
 
 func getStorageDir() string {

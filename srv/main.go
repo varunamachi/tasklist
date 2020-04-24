@@ -20,6 +20,30 @@ func main() {
 	if err != nil {
 		log.Fatalf("App failed! - %s", err.Error())
 	}
+	defer func() {
+		if todo.GetStorage() != nil {
+			storage := todo.GetStorage()
+			switch storage.(type) {
+			case *todo.JSONStorage:
+				jstor := storage.(*todo.JSONStorage)
+				err = jstor.Close()
+				if err != nil {
+					log.Fatalln("Storage file close error:", err)
+				} else {
+					log.Println("Storage safely closed")
+				}
+			case *db.PostgresStorage:
+				if db.Conn() != nil {
+					err = db.Conn().Close()
+					if err != nil {
+						log.Fatalln("DB not closed:", err)
+					} else {
+						log.Println("DB safely closed")
+					}
+				}
+			}
+		}
+	}()
 }
 
 func createCliApp() *cli.App {
@@ -77,6 +101,26 @@ func createCliApp() *cli.App {
 						heading, desc, time.Now().Add(numHrs)))
 					if err == nil {
 						fmt.Println("Added...")
+					}
+					return err
+				},
+			},
+			cli.Command{
+				Name:  "remove",
+				Usage: "Remove a existing task using ID",
+				Flags: []cli.Flag{
+					cli.UintFlag{
+						Name:     "id",
+						Required: true,
+						Usage:    "ID of the Task item",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					id := ctx.Int("id")
+					err := todo.GetStorage().Remove(id)
+					if err == nil {
+						fmt.Println("The task, ", id,
+							" has removed from the storage")
 					}
 					return err
 				},
