@@ -3,8 +3,10 @@ package todo
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
+	"time"
 )
 
 // TaskList -
@@ -59,54 +61,162 @@ type JSONStorage struct {
 	list []*TaskItem
 }
 
+// Name -
+func (js *JSONStorage) Name() string {
+	return "json"
+}
+
 // Init -
-func (pg *JSONStorage) Init() error {
+func (js *JSONStorage) Init() error {
 	var err error
-	pg.file, err = os.Create(getStorageDir() + "/task_list.json")
+	_, err = os.Stat(getStorageDir() + "/task_list.json")
+	if os.IsNotExist(err) {
+		js.file, err = os.Create(getStorageDir() + "/task_list.json")
+	} else {
+		js.file, err = os.OpenFile(getStorageDir()+"/task_list.json", os.O_RDWR, 0644)
+	}
+
 	if err != nil {
 		return err
 	}
-	return nil
+	fmt.Printf("File location: %s\n", getStorageDir()+"/task_list.json")
+
+	byt, err := ioutil.ReadAll(js.file)
+	if err != nil {
+		return err
+	}
+
+	js.list = make([]*TaskItem, 0, 100)
+
+	if len(byt) != 0 {
+		err = json.Unmarshal(byt, &js.list)
+	}
+
+	return err
 }
 
 // Add -
-func (pg *JSONStorage) Add(ti *TaskItem) error {
-	pg.list = append(pg.list, ti)
-	raw, err := json.MarshalIndent(pg.list, "", "    ")
+func (js *JSONStorage) Add(item *TaskItem) error {
+	if item == nil {
+		return fmt.Errorf("TaskItem is empty")
+	}
+	// Calcuate tasklist id
+	max := 0
+	for i := 0; i < len(js.list); i++ {
+		if js.list[i].ID > max {
+			max = js.list[i].ID
+		}
+	}
+	max++
+	item.ID = max
+
+	js.list = append(js.list, item)
+	raw, err := json.MarshalIndent(js.list, "", "    ")
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprint(pg.file, string(raw))
+	js.file.Truncate(0)
+	js.file.Seek(0, 0)
+
+	_, err = fmt.Fprint(js.file, string(raw))
+	if err != nil {
+		return err
+	}
+	// err = js.file.Close()
+	js.file.Sync()
 	return err
 }
 
 // Remove -
-func (pg *JSONStorage) Remove(id int) error {
+func (js *JSONStorage) Remove(id int) error {
+	var index int
+	for i := 0; i < len(js.list); i++ {
+		if js.list[i].ID == id {
+			index = i
+			break
+		}
+	}
+	js.list = append(js.list[:index], js.list[index+1:]...)
+	raw, err := json.MarshalIndent(js.list, "", "    ")
+	if err != nil {
+		return err
+	}
+	js.file.Truncate(0)
+	js.file.Seek(0, 0)
+	_, err = fmt.Fprint(js.file, string(raw))
+	js.file.Sync()
 	return nil
-}
-
-// Name -
-func (pg *JSONStorage) Name() string {
-	return "pg"
 }
 
 // Update -
-func (pg *JSONStorage) Update(item *TaskItem) error {
-	return nil
+func (js *JSONStorage) Update(item *TaskItem) error {
+	var listItem *TaskItem
+	for i := 0; i < len(js.list); i++ {
+		if js.list[i].ID == item.ID {
+			listItem = js.list[i]
+			break
+		}
+	}
+	if listItem != nil {
+		listItem.Deadline = item.Deadline
+		listItem.Description = item.Description
+		listItem.Heading = item.Heading
+		listItem.Status = item.Status
+		listItem.Modified = time.Now() // updating modified time
+
+		raw, err := json.MarshalIndent(js.list, "", "    ")
+		if err != nil {
+			return err
+		}
+		js.file.Truncate(0)
+		js.file.Seek(0, 0)
+		_, err = fmt.Fprint(js.file, string(raw))
+		js.file.Sync()
+		return nil
+	}
+	return fmt.Errorf("Task item with id = %d, not found", item.ID)
 }
 
 // Retrieve -
-func (pg *JSONStorage) Retrieve(id int) error {
-	return nil
+func (js *JSONStorage) Retrieve(id int) (*TaskItem, error) {
+	var listItem *TaskItem
+	for i := 0; i < len(js.list); i++ {
+		if js.list[i].ID == id {
+			listItem = js.list[i]
+			break
+		}
+	}
+	if listItem != nil {
+		return listItem, nil
+	}
+
+	return nil, fmt.Errorf("Task item with id = %d, not found", id)
 }
 
 // Bulk -
-func (pg *JSONStorage) Bulk(op BulkOp) error {
+func (js *JSONStorage) Bulk(op BulkOp) error {
 	return nil
 }
 
 // RetrieveAll -
-func (pg *JSONStorage) RetrieveAll() []*TaskItem {
+func (js *JSONStorage) RetrieveAll(offset, limit int) ([]*TaskItem, error) {
+	if js.list == nil || len(js.list) == 0 {
+		return nil, fmt.Errorf("%s storage has not-intialized/empty", js.Name())
+	}
+	if offset < 0 || offset >= len(js.list) || limit < 1 {
+		return nil, fmt.Errorf("%s storage: wrong paramter values", js.Name())
+	}
+	if offset+limit > len(js.list) {
+		limit = offset + limit - len(js.list)
+	}
+	return js.list[offset:limit], nil
+}
+
+// Close -
+func (js *JSONStorage) Close() error {
+	if js.file != nil {
+		return js.file.Close()
+	}
 	return nil
 }
 
